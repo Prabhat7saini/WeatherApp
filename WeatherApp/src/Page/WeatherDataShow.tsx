@@ -32,7 +32,7 @@ const WeatherDataShow: React.FC = () => {
         return (maxTemp + minTemp) / 2;
     }, [temp]);
 
-    const handleCityChange = (event: SelectChangeEvent<string>) => {
+    const handleCityChange = (event: SelectChangeEvent) => {
         setSelectedCity(event.target.value as string);
     };
 
@@ -62,6 +62,18 @@ const WeatherDataShow: React.FC = () => {
             fetchWeatherData(infos.latitude, infos.longitude);
         }
     }, [fetchWeatherData]);
+    useEffect(() => {
+        // Function to reload the page
+        const reloadPage = () => {
+          window.location.reload();
+        };
+    
+        // Set interval to reload the page every 10 minutes (600,000 milliseconds)
+        const intervalId = setInterval(reloadPage, 60000);
+    
+        // Cleanup the interval on component unmount
+        return () => clearInterval(intervalId);
+      }, []);
 
     return (
         <Container>
