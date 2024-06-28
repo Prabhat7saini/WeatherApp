@@ -5,9 +5,10 @@ import { Select, MenuItem, FormControl, InputLabel, Button, Typography } from '@
 import cityDetails from '../cityDetails.json';
 import axios from 'axios';
 import { SelectChangeEvent } from '@mui/material/Select';
+import DisplayWeatherData from './DisplayWeatherData';
 
 const WeatherDataShow: React.FC = () => {
-    const [temp, setTemp] = useState<{ temperature_2m_max?: number[]; temperature_2m_min?: number[] }>({});
+    const [temp, setTemp] = useState<{ temperature_2m_max: number[]; temperature_2m_min: number[] } | null>(null);
     const [currentCity, setCurrentCity] = useState<string>('');
     const [selectedCity, setSelectedCity] = useState<string>('');
     const [errors, setErrors] = useState<{ cityName?: boolean }>({});
@@ -17,14 +18,18 @@ const WeatherDataShow: React.FC = () => {
             try {
                 const response = await axios.get(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=temperature_2m_max,temperature_2m_min&forecast_days=1`);
                 setTemp(response.data.daily);
-            } catch (error: any) {
-                console.log(error.message);
+            } catch (error) {
+                if (error instanceof Error) {
+                    console.log(error.message, "error");
+                } else {
+                    console.log('An unknown error occurred');
+                }
             }
-        } 
+        }
     }, [currentCity]);
 
     const findAverageTemp = useMemo<number>(() => {
-        if (!temp.temperature_2m_max || !temp.temperature_2m_min) {
+        if (!temp?.temperature_2m_max || !temp?.temperature_2m_min) {
             return 0;
         }
         const maxTemp = temp.temperature_2m_max[0];
@@ -49,7 +54,7 @@ const WeatherDataShow: React.FC = () => {
             setCurrentCity(selectedCity);
             const info = { cityName: selectedCity, latitude: cityDetail.lat, longitude: cityDetail.lng };
             localStorage.setItem('information', JSON.stringify(info));
-            console.log(cityDetail.lat, cityDetail.lng);
+            fetchWeatherData(cityDetail.lat, cityDetail.lng);
         }
     };
 
@@ -58,26 +63,28 @@ const WeatherDataShow: React.FC = () => {
         if (info) {
             const infos = JSON.parse(info);
             setCurrentCity(infos.cityName);
-            setSelectedCity(infos.cityName);  
+            setSelectedCity(infos.cityName);
             fetchWeatherData(infos.latitude, infos.longitude);
         }
     }, [fetchWeatherData]);
+
     useEffect(() => {
-        // Function to reload the page
         const reloadPage = () => {
-          window.location.reload();
+            const info = localStorage.getItem('information');
+        if (info) {
+            const infos = JSON.parse(info);
+            setCurrentCity(infos.cityName);
+            setSelectedCity(infos.cityName);
+            fetchWeatherData(infos.latitude, infos.longitude);
+        }
         };
-    
-        // Set interval to reload the page every 10 minutes (600,000 milliseconds)
-        const intervalId = setInterval(reloadPage, 60000);
-    
-        // Cleanup the interval on component unmount
+        const intervalId = setInterval(reloadPage, 600000);
         return () => clearInterval(intervalId);
-      }, []);
+    }, []);
 
     return (
         <Container>
-            <Box>
+            <Box >
                 <form onSubmit={onSubmit}>
                     <Box style={{
                         width: '100vw', display: 'flex', flexDirection: 'column', justifyContent: 'center',
@@ -103,17 +110,9 @@ const WeatherDataShow: React.FC = () => {
                     </Box>
                 </form>
             </Box>
-            <Box>
-                {temp.temperature_2m_max && temp.temperature_2m_min && (
-                    <div>
-                        <Typography>Average Temperature: {findAverageTemp}°C</Typography>
-                        <Typography>Max Temp: {temp.temperature_2m_max[0]}°C</Typography>
-                        <Typography>Min Temp: {temp.temperature_2m_min[0]}°C</Typography>
-                    </div>
-                )}
-            </Box>
+            {temp && <DisplayWeatherData findAverageTemp={findAverageTemp} temp={temp} />}
         </Container>
     );
-}
+};
 
 export default WeatherDataShow;
